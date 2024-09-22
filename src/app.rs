@@ -1,14 +1,18 @@
-use std::{fs::File, io};
+use std::{fs::File, io, path::PathBuf};
 
 use crossterm::event::{self, KeyEventKind};
 use ratatui::{layout::{Constraint, Direction, Layout}, style::{Color, Style}, widgets::Paragraph, DefaultTerminal}
 ;
 
+use crate::file;
+
 pub struct App {
     terminal: DefaultTerminal,
     pub input: String,
     pub action_input: String,
-    selected_file: Option<File>,
+    filename: String,
+    current_dir: PathBuf,
+    modified: bool,
     editor_mode: EditorMode,
     exit: bool,
 }
@@ -19,13 +23,23 @@ impl App {
             terminal,
             input: "".to_string(),
             action_input: "".to_string(),
-            selected_file: None,
+            filename: "".to_string(),
+            current_dir: PathBuf::new(),
+            modified: false,
             editor_mode: EditorMode::Normal,
             exit: false,
         }
     }
 
-    pub fn run(&mut self) -> io::Result<()> {
+    pub fn run(&mut self, directory: PathBuf, filename: &str) -> io::Result<()> {
+        //get file contents
+        if let Ok((content, directory)) = file::get_file_contents(directory.clone(), filename) {
+            self.current_dir = directory;
+            self.filename = filename.to_string();
+            self.input = content;
+        }
+
+        //main loop
         loop {
             if self.exit {
                 return Ok(());
@@ -52,15 +66,15 @@ impl App {
             .split(frame.area());
 
             let editing_text = Paragraph::new(self.input.clone())
-            .style(Style::default().fg(Color::LightMagenta).bg(Color::Black));
+            .style(Style::default().fg(Color::Magenta));
 
             frame.render_widget(editing_text, chunks[0]);
             
             let editing_action = String::from(":") + &self.action_input;
             let editing_mode = Paragraph::new(match self.editor_mode {
-            EditorMode::Normal => "NORMAL",
-            EditorMode::Insert => "INSERT",
-            EditorMode::Action => editing_action.as_str(),
+                EditorMode::Normal => "NORMAL",
+                EditorMode::Insert => if self.modified { "INSERT (modified)" } else { "INSERT" },
+                EditorMode::Action => editing_action.as_str(),
             });
 
             frame.render_widget(editing_mode, chunks[1]);
@@ -73,11 +87,18 @@ impl App {
             if key.kind == KeyEventKind::Press {
                 match key.code {
                     event::KeyCode::Char(':') => {
-                        self.action_input.clear();
-                        self.editor_mode = EditorMode::Action;
+                        if let EditorMode::Normal = self.editor_mode {
+                            self.editor_mode = EditorMode::Action;
+                        }
+                    },
+                    event::KeyCode::Char('i') => {
+                        self.editor_mode = EditorMode::Insert;
                     },
                     event::KeyCode::Esc => {
                         if let EditorMode::Action = self.editor_mode {
+                            self.editor_mode = EditorMode::Normal;
+                        }
+                        if let EditorMode::Insert = self.editor_mode {
                             self.editor_mode = EditorMode::Normal;
                         }
                     },
@@ -88,6 +109,7 @@ impl App {
                             },
                             EditorMode::Insert => {
                                 self.input.push(c);
+                                self.modified = true;
                             },
                             _ => {}
                         }
@@ -113,6 +135,9 @@ impl App {
                                 self.action_input.clear();
                                 self.editor_mode = EditorMode::Normal;
                             },
+                            EditorMode::Insert => {
+                                self.input.push('\n');
+                            },
                             _ => {}
                         }
                     },
@@ -129,7 +154,15 @@ fn action(input: &str, app: &mut App) {
     for c in input.chars() {
         match c {
             'w' => {
-                
+                match File::create(app.current_dir.join(&app.filename)) {
+                    Ok(file) => {
+                        file::write_to_file(file, &app.input).unwrap();
+                    },
+                    Err(_) => {
+                        file::create_file_and_write(app.current_dir.clone(), &app.filename, &app.input).unwrap();
+                    }
+                }
+                app.modified = false;
             },
             'q' => {
                 app.exit = true;
