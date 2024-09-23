@@ -32,10 +32,11 @@ impl App {
     }
 
     pub fn run(&mut self, directory: PathBuf, filename: &str) -> io::Result<()> {
+        self.filename = filename.to_string();
+        self.current_dir = directory.clone();
+        
         //get file contents
-        if let Ok((content, directory)) = file::get_file_contents(directory.clone(), filename) {
-            self.current_dir = directory;
-            self.filename = filename.to_string();
+        if let Ok(content) = file::get_file_contents(directory, filename) {
             self.input = content;
         }
 
@@ -154,21 +155,16 @@ fn action(input: &str, app: &mut App) {
     for c in input.chars() {
         match c {
             'w' => {
-                match File::create(app.current_dir.join(&app.filename)) {
-                    Ok(file) => {
-                        file::write_to_file(file, &app.input).unwrap();
-                    },
-                    Err(_) => {
-                        file::create_file_and_write(app.current_dir.clone(), &app.filename, &app.input).unwrap();
-                    }
+                if app.modified {
+                    let file = File::create(app.current_dir.join(&app.filename)).unwrap();
+                    file::write_to_file(file, &app.input).unwrap();
+                    app.modified = false;
                 }
-                app.modified = false;
             },
             'q' => {
                 app.exit = true;
             },
             _ => {}
-            
         }
     }
 }
