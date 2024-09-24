@@ -1,6 +1,5 @@
-# Rust Learning Project
-
-This project is a simple Rust program created for the purpose of learning the Rust programming language. The program is currently a work in progress.
+# About 
+This project is called "Noters". The program is an text editor in Terminal (TUI) which looks like Vim, but leightweight without any analyzer or plugins for syntax of programming language.
 
 ## Getting Started
 
