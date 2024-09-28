@@ -56,11 +56,11 @@ impl App {
         let _ = terminal.draw(|frame| {
             let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .margin(1)
+            .margin(0)
             .constraints(
                 [
-                Constraint::Percentage(90),
-                Constraint::Percentage(10),
+                Constraint::Percentage(95),
+                Constraint::Percentage(5),
                 ]
                 .as_ref(),
             )
@@ -73,10 +73,10 @@ impl App {
             
             let editing_action = String::from(":") + &self.action_input;
             let editing_mode = Paragraph::new(match self.editor_mode {
-                EditorMode::Normal => "NORMAL",
+                EditorMode::Normal => if self.modified { "INSERT (modified)" } else { "INSERT" },
                 EditorMode::Insert => if self.modified { "INSERT (modified)" } else { "INSERT" },
                 EditorMode::Action => editing_action.as_str(),
-            });
+            }).style(Style::default().fg(Color::White).bg(Color::LightMagenta));
 
             frame.render_widget(editing_mode, chunks[1]);
         })?;
