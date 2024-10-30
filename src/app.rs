@@ -1,8 +1,12 @@
 use std::{fs::File, io, path::PathBuf};
 
 use crossterm::event::{self, KeyEventKind};
-use ratatui::{layout::{Constraint, Direction, Layout}, style::{Color, Style}, widgets::Paragraph, DefaultTerminal}
-;
+use ratatui::{
+    layout::{Constraint, Direction, Layout},
+    style::{Color, Style},
+    widgets::Paragraph,
+    DefaultTerminal,
+};
 
 use crate::file;
 
@@ -34,7 +38,7 @@ impl App {
     pub fn run(&mut self, directory: PathBuf, filename: &str) -> io::Result<()> {
         self.filename = filename.to_string();
         self.current_dir = directory.clone();
-        
+
         //get file contents
         if let Ok(content) = file::get_file_contents(directory, filename) {
             self.input = content;
@@ -55,28 +59,35 @@ impl App {
         let terminal = &mut self.terminal;
         let _ = terminal.draw(|frame| {
             let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .margin(0)
-            .constraints(
-                [
-                Constraint::Percentage(95),
-                Constraint::Percentage(5),
-                ]
-                .as_ref(),
-            )
-            .split(frame.area());
+                .direction(Direction::Vertical)
+                .margin(0)
+                .constraints([Constraint::Fill(95), Constraint::Fill(5)].as_ref())
+                .split(frame.area());
 
-            let editing_text = Paragraph::new(self.input.clone())
-            .style(Style::default().fg(Color::Magenta));
+            let editing_text =
+                Paragraph::new(self.input.clone()).style(Style::default().fg(Color::Magenta));
 
             frame.render_widget(editing_text, chunks[0]);
-            
+
             let editing_action = String::from(":") + &self.action_input;
             let editing_mode = Paragraph::new(match self.editor_mode {
-                EditorMode::Normal => if self.modified { "INSERT (modified)" } else { "INSERT" },
-                EditorMode::Insert => if self.modified { "INSERT (modified)" } else { "INSERT" },
+                EditorMode::Normal => {
+                    if self.modified {
+                        "INSERT (modified)"
+                    } else {
+                        "INSERT"
+                    }
+                }
+                EditorMode::Insert => {
+                    if self.modified {
+                        "INSERT (modified)"
+                    } else {
+                        "INSERT"
+                    }
+                }
                 EditorMode::Action => editing_action.as_str(),
-            }).style(Style::default().fg(Color::White).bg(Color::LightMagenta));
+            })
+            .style(Style::default().fg(Color::White).bg(Color::LightMagenta));
 
             frame.render_widget(editing_mode, chunks[1]);
         })?;
@@ -91,10 +102,10 @@ impl App {
                         if let EditorMode::Normal = self.editor_mode {
                             self.editor_mode = EditorMode::Action;
                         }
-                    },
+                    }
                     event::KeyCode::Char('i') => {
                         self.editor_mode = EditorMode::Insert;
-                    },
+                    }
                     event::KeyCode::Esc => {
                         if let EditorMode::Action = self.editor_mode {
                             self.editor_mode = EditorMode::Normal;
@@ -102,45 +113,39 @@ impl App {
                         if let EditorMode::Insert = self.editor_mode {
                             self.editor_mode = EditorMode::Normal;
                         }
-                    },
-                    event::KeyCode::Char(c) => {
-                        match self.editor_mode {
-                            EditorMode::Action => {
-                                self.action_input.push(c);
-                            },
-                            EditorMode::Insert => {
-                                self.input.push(c);
-                                self.modified = true;
-                            },
-                            _ => {}
+                    }
+                    event::KeyCode::Char(c) => match self.editor_mode {
+                        EditorMode::Action => {
+                            self.action_input.push(c);
                         }
-                    },
-                    event::KeyCode::Backspace => {
-                        match self.editor_mode {
-                            EditorMode::Action => {
-                                self.action_input.pop();
-                            },
-                            EditorMode::Insert => {
-                                self.input.pop();
-                            },
-                            _ => {}
+                        EditorMode::Insert => {
+                            self.input.push(c);
+                            self.modified = true;
                         }
+                        _ => {}
+                    },
+                    event::KeyCode::Backspace => match self.editor_mode {
+                        EditorMode::Action => {
+                            self.action_input.pop();
+                        }
+                        EditorMode::Insert => {
+                            self.input.pop();
+                        }
+                        _ => {}
                     },
 
-                    event::KeyCode::Enter => {
-                        match self.editor_mode {
-                            EditorMode::Action => {
-                                let action_input = self.action_input.clone();
-                                action(&action_input, self);
+                    event::KeyCode::Enter => match self.editor_mode {
+                        EditorMode::Action => {
+                            let action_input = self.action_input.clone();
+                            action(&action_input, self);
 
-                                self.action_input.clear();
-                                self.editor_mode = EditorMode::Normal;
-                            },
-                            EditorMode::Insert => {
-                                self.input.push('\n');
-                            },
-                            _ => {}
+                            self.action_input.clear();
+                            self.editor_mode = EditorMode::Normal;
                         }
+                        EditorMode::Insert => {
+                            self.input.push('\n');
+                        }
+                        _ => {}
                     },
                     _ => {}
                 }
@@ -160,10 +165,10 @@ fn action(input: &str, app: &mut App) {
                     file::write_to_file(file, &app.input).unwrap();
                     app.modified = false;
                 }
-            },
+            }
             'q' => {
                 app.exit = true;
-            },
+            }
             _ => {}
         }
     }
